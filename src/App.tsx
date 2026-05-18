@@ -5,6 +5,9 @@ import { ToastProvider } from './app/Toast';
 import { VaultPicker } from './app/VaultPicker';
 import { Workspace } from './app/Workspace';
 import { subscribeBackend, vaultEventBus } from './ipc/events';
+// Importing graphStore here activates its module-level bus subscriptions
+// before any snapshot can fire, even though GraphView itself is lazy-loaded.
+import './state/graphStore';
 import { useWorkspace } from './state/workspaceStore';
 
 const TREE_REFRESH_DEBOUNCE_MS = 200;
