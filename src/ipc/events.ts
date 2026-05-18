@@ -1,48 +1,55 @@
-import type { VaultEvent } from '@ipc/index';
+import type { GraphDelta, GraphSnapshot, VaultEvent } from '@ipc/index';
 import { listen } from '@tauri-apps/api/event';
 
 export type Unsubscribe = () => void;
 
-type Handler = (e: VaultEvent) => void;
+type VaultHandler = (e: VaultEvent) => void;
+type GraphDeltaHandler = (e: GraphDelta) => void;
+type GraphSnapshotHandler = (e: GraphSnapshot) => void;
 
-/**
- * Process-local pub/sub for vault events. The app subscribes ONCE to Tauri's
- * underlying `vault:event` channel and re-broadcasts to every component
- * listener registered here. Avoids registering N Tauri listeners.
- *
- * Note: this is intentionally separate from the plugin EventBus that arrives
- * in M9 — that one lives in @memoview/plugin-sdk with permission scoping.
- */
-class VaultEventBus {
-  private handlers = new Set<Handler>();
-
-  on(fn: Handler): Unsubscribe {
+class Bus<T> {
+  private handlers = new Set<(e: T) => void>();
+  on(fn: (e: T) => void): Unsubscribe {
     this.handlers.add(fn);
     return () => {
       this.handlers.delete(fn);
     };
   }
-
-  emit(e: VaultEvent): void {
-    // Snapshot in case a handler unsubscribes during dispatch.
+  emit(e: T): void {
     for (const h of [...this.handlers]) {
       try {
         h(e);
       } catch (err) {
-        console.error('[vault-bus] handler error:', err);
+        console.error('[bus] handler error:', err);
       }
     }
   }
 }
 
-export const vaultEventBus = new VaultEventBus();
+export const vaultEventBus = new Bus<VaultEvent>();
+export const graphDeltaBus = new Bus<GraphDelta>();
+export const graphSnapshotBus = new Bus<GraphSnapshot>();
+
+// Type re-exports for convenience.
+export type { VaultHandler, GraphDeltaHandler, GraphSnapshotHandler };
 
 /**
- * Subscribe to the upstream Tauri stream and forward each event into the
- * local bus. Call once at app startup.
+ * Subscribe to the upstream Tauri streams and forward events into the local
+ * buses. Call once at app startup; returns a disposer.
  */
-export async function subscribeVaultEvents(): Promise<Unsubscribe> {
-  return await listen<VaultEvent>('vault:event', (msg) => {
-    vaultEventBus.emit(msg.payload);
-  });
+export async function subscribeBackend(): Promise<Unsubscribe> {
+  const unsubVault = await listen<VaultEvent>('vault:event', (msg) =>
+    vaultEventBus.emit(msg.payload),
+  );
+  const unsubDelta = await listen<GraphDelta>('graph:delta', (msg) =>
+    graphDeltaBus.emit(msg.payload),
+  );
+  const unsubSnap = await listen<GraphSnapshot>('graph:snapshot', (msg) =>
+    graphSnapshotBus.emit(msg.payload),
+  );
+  return () => {
+    unsubVault();
+    unsubDelta();
+    unsubSnap();
+  };
 }

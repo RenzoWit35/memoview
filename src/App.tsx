@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { ToastProvider } from './app/Toast';
 import { VaultPicker } from './app/VaultPicker';
 import { Workspace } from './app/Workspace';
-import { subscribeVaultEvents, vaultEventBus } from './ipc/events';
+import { subscribeBackend, vaultEventBus } from './ipc/events';
 import { useWorkspace } from './state/workspaceStore';
 
 const TREE_REFRESH_DEBOUNCE_MS = 200;
@@ -14,8 +14,8 @@ export function App() {
     void hydrate();
   }, [hydrate]);
 
-  // Subscribe ONCE to the upstream Tauri vault:event channel; the local bus
-  // fans out to per-tab listeners (EditorPane).
+  // Subscribe ONCE to upstream Tauri streams; the local buses fan out to per-
+  // component listeners (EditorPane, BacklinksPane).
   useEffect(() => {
     let unsub: (() => void) | null = null;
     let treeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -34,7 +34,7 @@ export function App() {
       }
     });
 
-    void subscribeVaultEvents().then((stop) => {
+    void subscribeBackend().then((stop) => {
       if (cancelled) {
         stop();
         return;

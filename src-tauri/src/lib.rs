@@ -1,6 +1,8 @@
 mod config;
 mod error;
+mod graph;
 mod ipc;
+mod parser;
 mod vault;
 mod watcher;
 
@@ -9,6 +11,7 @@ use std::time::Duration;
 
 use tauri::Manager;
 
+use crate::graph::GraphIndex;
 use crate::watcher::{WatcherHandle, WatcherState};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -24,6 +27,7 @@ pub fn run() {
             let state = Arc::new(WatcherState::default());
             app.manage(state.clone());
             app.manage(WatcherHandle::default());
+            app.manage(GraphIndex::new());
 
             // TTL pruner for stale self-write markers.
             tauri::async_runtime::spawn(async move {
@@ -43,6 +47,8 @@ pub fn run() {
             ipc::vault_read,
             ipc::vault_write,
             ipc::last_vault,
+            ipc::graph_snapshot,
+            ipc::graph_backlinks,
         ])
         .run(tauri::generate_context!())
         .expect("error while running memoview");

@@ -17,6 +17,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Runtime};
 
 use crate::error::AppResult;
+use crate::graph::{self, GraphIndex};
 
 /// Folders the watcher never reports on. Mirrors `vault::list`.
 const SKIP_DIRS: &[&str] = &[".git", ".obsidian", "node_modules", ".trash"];
@@ -40,6 +41,7 @@ impl VaultWatcher {
         root: PathBuf,
         app: AppHandle<R>,
         state: Arc<WatcherState>,
+        graph: Arc<GraphIndex>,
     ) -> AppResult<Self> {
         let (tx, mut rx) = tokio::sync::mpsc::channel::<DebouncedEvent>(1024);
 
@@ -75,6 +77,12 @@ impl VaultWatcher {
                 for v in out {
                     if let Err(e) = app.emit("vault:event", &v) {
                         eprintln!("emit vault:event failed: {e}");
+                    }
+                    let delta = graph::apply_event(&graph, &v);
+                    if !delta.is_empty() {
+                        if let Err(e) = app.emit("graph:delta", &delta) {
+                            eprintln!("emit graph:delta failed: {e}");
+                        }
                     }
                 }
             }

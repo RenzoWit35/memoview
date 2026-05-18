@@ -1,4 +1,4 @@
-import type { ReadResult, TFile, WriteResult } from '@ipc/index';
+import type { BacklinkRef, GraphSnapshot, ReadResult, TFile, WriteResult } from '@ipc/index';
 import { invoke } from '@tauri-apps/api/core';
 
 export interface PickResult {
@@ -13,3 +13,6 @@ export const vaultRead = (path: string) => invoke<ReadResult>('vault_read', { pa
 export const vaultWrite = (path: string, content: string, precondition: string | null) =>
   invoke<WriteResult>('vault_write', { path, content, precondition });
 export const lastVault = () => invoke<string | null>('last_vault');
+
+export const graphSnapshot = () => invoke<GraphSnapshot>('graph_snapshot');
+export const graphBacklinks = (path: string) => invoke<BacklinkRef[]>('graph_backlinks', { path });
