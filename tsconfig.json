@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@ipc/*": ["packages/ipc-schema/src/*"],
+      "@sdk/*": ["packages/plugin-sdk/src/*"]
+    },
+    "noEmit": true
+  },
+  "include": ["src", "packages/*/src", "vite.config.ts"],
+  "exclude": ["node_modules", "dist", "src-tauri/target"]
+}
