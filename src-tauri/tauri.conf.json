@@ -26,10 +26,17 @@
     }
   },
   "bundle": {
-    "active": false,
+    "active": true,
     "targets": "all",
     "category": "Productivity",
     "shortDescription": "Local-first knowledge management.",
-    "longDescription": "memoview is an open-source, developer-focused, local-first knowledge management tool."
+    "longDescription": "memoview is an open-source, developer-focused, local-first knowledge management tool.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
   }
 }
