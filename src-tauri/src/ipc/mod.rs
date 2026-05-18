@@ -10,14 +10,13 @@ use crate::config;
 use crate::error::{AppError, AppResult};
 use crate::graph::{self, BacklinkRef, GraphIndex, GraphSnapshot};
 use crate::parser;
+use crate::refactor::{self, RenameReport};
+use crate::search::{SearchHit, SearchIndex};
 use crate::vault::{self, ReadResult, TFile, WriteResult};
 use crate::watcher::{VaultWatcher, WatcherHandle, WatcherState};
 
 const SKIP_DIRS: &[&str] = &[".git", ".obsidian", "node_modules", ".trash"];
 
-/// Prompts the user to pick a vault directory. Persists the choice, arms the
-/// filesystem watcher on the new root, and returns the listed tree. Returns
-/// `None` if the user cancelled the picker.
 #[tauri::command]
 pub async fn vault_pick<R: Runtime>(app: AppHandle<R>) -> AppResult<Option<PickResult>> {
     let (tx, rx) = tokio::sync::oneshot::channel();
@@ -38,17 +37,17 @@ pub async fn vault_pick<R: Runtime>(app: AppHandle<R>) -> AppResult<Option<PickR
     Ok(Some(PickResult { root: path, tree }))
 }
 
-/// (Re)build the graph from disk and arm the watcher on a vault root.
 fn bootstrap_vault<R: Runtime>(app: &AppHandle<R>, root: PathBuf) -> AppResult<()> {
     let watcher_state = app.state::<Arc<WatcherState>>().inner().clone();
     let graph = app.state::<Arc<GraphIndex>>().inner().clone();
+    let search = app.state::<Arc<SearchIndex>>().inner().clone();
     let handle = app.state::<WatcherHandle>();
 
     watcher_state.clear();
     graph.clear();
     graph.set_vault_root(root.clone());
+    search.clear();
 
-    // Parallel parse + bulk-load. Errors per-file are silently skipped.
     let md_paths: Vec<PathBuf> = WalkDir::new(&root)
         .into_iter()
         .filter_entry(|e| {
@@ -60,27 +59,32 @@ fn bootstrap_vault<R: Runtime>(app: &AppHandle<R>, root: PathBuf) -> AppResult<(
         .map(|e| e.path().to_path_buf())
         .collect();
 
-    let items: Vec<(PathBuf, parser::NoteFacts)> = md_paths
+    let parsed: Vec<(PathBuf, String, parser::NoteFacts)> = md_paths
         .par_iter()
         .filter_map(|p| {
             let bytes = std::fs::read(p).ok()?;
             let source = String::from_utf8(bytes).ok()?;
             let facts = parser::parse(p, &source);
-            // Seed the watcher hash cache so first-touch Modify events filter cleanly.
             watcher_state
                 .hashes
                 .insert(p.clone(), facts.content_hash.clone());
-            Some((p.clone(), facts))
+            Some((p.clone(), source, facts))
         })
         .collect();
 
+    // Feed the search index alongside the graph.
+    for (path, body, facts) in &parsed {
+        search.upsert(path, &facts.title, body);
+    }
+
+    let items: Vec<(PathBuf, parser::NoteFacts)> =
+        parsed.into_iter().map(|(p, _b, f)| (p, f)).collect();
     graph::bulk_load(&graph, items);
 
-    // Emit the initial snapshot so the renderer has the whole graph.
     let snapshot = graph.snapshot();
     let _ = app.emit("graph:snapshot", &snapshot);
 
-    let watcher = VaultWatcher::spawn(root, app.clone(), watcher_state, graph)?;
+    let watcher = VaultWatcher::spawn(root, app.clone(), watcher_state, graph, search)?;
     handle.swap(watcher);
     Ok(())
 }
@@ -97,8 +101,6 @@ pub async fn vault_list(path: PathBuf) -> AppResult<Vec<TFile>> {
     vault::list(&path)
 }
 
-/// Re-list a vault and (re)arm the filesystem watcher on its root. Used on app
-/// boot to hydrate the most recently opened vault.
 #[tauri::command]
 pub async fn vault_open<R: Runtime>(app: AppHandle<R>, path: PathBuf) -> AppResult<Vec<TFile>> {
     let tree = vault::list(&path)?;
@@ -118,11 +120,26 @@ pub async fn vault_write(
     content: String,
     precondition: Option<String>,
 ) -> AppResult<WriteResult> {
-    // Mark ourselves before writing so the watcher's classify task ignores the echo.
     state.suppress(&path);
     let result = vault::write_atomic(&path, &content, precondition.as_deref()).await?;
     state.hashes.insert(path, result.hash.clone());
     Ok(result)
+}
+
+#[tauri::command]
+pub async fn vault_rename(
+    graph: State<'_, Arc<GraphIndex>>,
+    watcher_state: State<'_, Arc<WatcherState>>,
+    from: PathBuf,
+    to: PathBuf,
+) -> AppResult<RenameReport> {
+    refactor::rename_note(
+        graph.inner().clone(),
+        watcher_state.inner().clone(),
+        &from,
+        &to,
+    )
+    .await
 }
 
 #[tauri::command]
@@ -136,9 +153,24 @@ pub fn graph_snapshot(graph: State<'_, Arc<GraphIndex>>) -> GraphSnapshot {
 }
 
 #[tauri::command]
-pub fn graph_backlinks(
-    graph: State<'_, Arc<GraphIndex>>,
-    path: PathBuf,
-) -> Vec<BacklinkRef> {
+pub fn graph_backlinks(graph: State<'_, Arc<GraphIndex>>, path: PathBuf) -> Vec<BacklinkRef> {
     graph.backlinks_for_path(&path)
+}
+
+#[tauri::command]
+pub fn graph_resolve_wikilink(
+    graph: State<'_, Arc<GraphIndex>>,
+    source: Option<PathBuf>,
+    target: String,
+) -> Option<PathBuf> {
+    graph.resolve_wikilink(source.as_deref(), &target)
+}
+
+#[tauri::command]
+pub fn search(
+    index: State<'_, Arc<SearchIndex>>,
+    query: String,
+    limit: Option<usize>,
+) -> Vec<SearchHit> {
+    index.search(&query, limit.unwrap_or(50))
 }

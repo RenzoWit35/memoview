@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import { CommandPalette } from './app/CommandPalette';
+import { ContextMenuProvider } from './app/ContextMenu';
 import { ToastProvider } from './app/Toast';
 import { VaultPicker } from './app/VaultPicker';
 import { Workspace } from './app/Workspace';
@@ -14,8 +16,6 @@ export function App() {
     void hydrate();
   }, [hydrate]);
 
-  // Subscribe ONCE to upstream Tauri streams; the local buses fan out to per-
-  // component listeners (EditorPane, BacklinksPane).
   useEffect(() => {
     let unsub: (() => void) | null = null;
     let treeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -50,5 +50,12 @@ export function App() {
     };
   }, []);
 
-  return <ToastProvider>{vaultRoot ? <Workspace /> : <VaultPicker />}</ToastProvider>;
+  return (
+    <ToastProvider>
+      <ContextMenuProvider>
+        {vaultRoot ? <Workspace /> : <VaultPicker />}
+        <CommandPalette />
+      </ContextMenuProvider>
+    </ToastProvider>
+  );
 }

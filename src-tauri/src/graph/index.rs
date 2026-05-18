@@ -76,6 +76,55 @@ impl GraphIndex {
         self.by_path.get(path).map(|r| *r)
     }
 
+    pub fn note_view(&self, id: NoteId) -> Option<NoteView> {
+        self.notes.get(&id).map(|r| NoteView::from(r.value()))
+    }
+
+    pub fn path_for(&self, id: NoteId) -> Option<PathBuf> {
+        self.notes.get(&id).map(|r| r.path.clone())
+    }
+
+    pub fn in_edges_for(&self, id: NoteId) -> Vec<Edge> {
+        self.in_edges.get(&id).map(|r| r.clone()).unwrap_or_default()
+    }
+
+    /// Resolve a wikilink target to a path, applying the same preference rules
+    /// as the internal resolver. The optional source path biases the search
+    /// toward same-folder matches.
+    pub fn resolve_wikilink(&self, source: Option<&Path>, target: &str) -> Option<PathBuf> {
+        let key = target.to_lowercase();
+        let candidates: Vec<NoteId> = self
+            .by_name
+            .get(&key)
+            .map(|r| r.iter().copied().collect::<Vec<_>>())
+            .unwrap_or_default();
+        if candidates.is_empty() {
+            return None;
+        }
+        if candidates.len() == 1 {
+            return self.path_for(candidates[0]);
+        }
+        if let Some(src) = source {
+            let src_dir = src.parent();
+            for id in &candidates {
+                if let Some(p) = self.path_for(*id) {
+                    if p.parent() == src_dir {
+                        return Some(p);
+                    }
+                }
+            }
+        }
+        self.path_for(candidates[0])
+    }
+
+    pub fn record_hash(&self, path: &Path, hash: String) {
+        if let Some(id) = self.id_for_path(path) {
+            if let Some(mut n) = self.notes.get_mut(&id) {
+                n.content_hash = hash;
+            }
+        }
+    }
+
     pub fn next_id(&self) -> NoteId {
         self.next_id.fetch_add(1, Ordering::Relaxed)
     }

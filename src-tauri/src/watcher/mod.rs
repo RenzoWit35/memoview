@@ -18,6 +18,7 @@ use tauri::{AppHandle, Emitter, Runtime};
 
 use crate::error::AppResult;
 use crate::graph::{self, GraphIndex};
+use crate::search::SearchIndex;
 
 /// Folders the watcher never reports on. Mirrors `vault::list`.
 const SKIP_DIRS: &[&str] = &[".git", ".obsidian", "node_modules", ".trash"];
@@ -42,6 +43,7 @@ impl VaultWatcher {
         app: AppHandle<R>,
         state: Arc<WatcherState>,
         graph: Arc<GraphIndex>,
+        search: Arc<SearchIndex>,
     ) -> AppResult<Self> {
         let (tx, mut rx) = tokio::sync::mpsc::channel::<DebouncedEvent>(1024);
 
@@ -78,6 +80,7 @@ impl VaultWatcher {
                     if let Err(e) = app.emit("vault:event", &v) {
                         eprintln!("emit vault:event failed: {e}");
                     }
+                    update_search(&v, &search).await;
                     let delta = graph::apply_event(&graph, &v);
                     if !delta.is_empty() {
                         if let Err(e) = app.emit("graph:delta", &delta) {
@@ -91,6 +94,29 @@ impl VaultWatcher {
         Ok(Self {
             _debouncer: debouncer,
         })
+    }
+}
+
+async fn update_search(ev: &VaultEvent, search: &SearchIndex) {
+    match ev {
+        VaultEvent::Created { path } | VaultEvent::Modified { path, .. } => {
+            if let Ok(bytes) = tokio::fs::read(path).await {
+                if let Ok(source) = String::from_utf8(bytes) {
+                    let facts = crate::parser::parse(path, &source);
+                    search.upsert(path, &facts.title, &source);
+                }
+            }
+        }
+        VaultEvent::Deleted { path } => search.remove(path),
+        VaultEvent::Renamed { from, to } => {
+            search.rename(from, to);
+            if let Ok(bytes) = tokio::fs::read(to).await {
+                if let Ok(source) = String::from_utf8(bytes) {
+                    let facts = crate::parser::parse(to, &source);
+                    search.upsert(to, &facts.title, &source);
+                }
+            }
+        }
     }
 }
 

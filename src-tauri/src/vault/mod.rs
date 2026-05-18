@@ -154,6 +154,14 @@ pub async fn write_atomic(
     Ok(WriteResult { hash })
 }
 
+/// Atomically rename a file. Used by the rename-refactor flow. The watcher
+/// echo for both `from` and `to` should already have been suppressed by the
+/// caller.
+pub async fn rename_atomic(from: &Path, to: &Path) -> AppResult<()> {
+    tokio::fs::rename(from, to).await?;
+    Ok(())
+}
+
 /// Returns a one-line preview by walking the vault root and counting .md files.
 /// Useful for the smoke test. Not currently exposed via IPC.
 #[allow(dead_code)]
