@@ -1,6 +1,6 @@
 import type { TFile } from '@ipc/index';
 import { create } from 'zustand';
-import { lastVault, vaultList, vaultPick, vaultRead } from '../ipc/invoke';
+import { lastVault, vaultList, vaultOpen, vaultPick, vaultRead } from '../ipc/invoke';
 
 export interface Tab {
   id: string;
@@ -27,6 +27,13 @@ interface WorkspaceState {
   setActive(id: string): void;
   /** Called by the editor after a successful save to update the cached hash. */
   markSaved(id: string, content: string, hash: string): void;
+  /** Re-list the current vault root; used after external create/delete/rename. */
+  refreshTree(): Promise<void>;
+  /**
+   * Synchronously update an open tab's cached content and hash after the editor
+   * applied an external on-disk change (auto-merge or Use disk version flow).
+   */
+  applyExternalChange(path: string, content: string, hash: string): void;
 }
 
 export const useWorkspace = create<WorkspaceState>((set, get) => ({
@@ -42,7 +49,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
     try {
       const root = await lastVault();
       if (root) {
-        const tree = await vaultList(root);
+        const tree = await vaultOpen(root);
         set({ vaultRoot: root, tree, loading: false });
       } else {
         set({ loading: false });
@@ -99,6 +106,25 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   markSaved(id, content, hash) {
     set((s) => ({
       openTabs: s.openTabs.map((t) => (t.id === id ? { ...t, content, hash, dirty: false } : t)),
+    }));
+  },
+
+  async refreshTree() {
+    const root = get().vaultRoot;
+    if (!root) return;
+    try {
+      const tree = await vaultList(root);
+      set({ tree });
+    } catch (e) {
+      set({ error: String(e) });
+    }
+  },
+
+  applyExternalChange(path, content, hash) {
+    set((s) => ({
+      openTabs: s.openTabs.map((t) =>
+        t.path === path ? { ...t, content, hash, dirty: false } : t,
+      ),
     }));
   },
 }));

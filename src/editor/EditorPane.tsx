@@ -1,7 +1,8 @@
 import type { EditorView } from '@codemirror/view';
 import { useEffect, useRef, useState } from 'react';
 import { useToast } from '../app/Toast';
-import { vaultRead, vaultWrite } from '../ipc/invoke';
+import { vaultEventBus } from '../ipc/events';
+import { graphResolveWikilink, vaultRead, vaultWrite } from '../ipc/invoke';
 import type { Tab } from '../state/workspaceStore';
 import { useWorkspace } from '../state/workspaceStore';
 import { createEditor } from './createEditor';
@@ -102,6 +103,17 @@ export function EditorPane({ tab }: { tab: Tab }) {
       onSaveShortcut: () => {
         void flush();
       },
+      onOpenLink: (target) => {
+        void (async () => {
+          const resolved = await graphResolveWikilink(tab.path, target);
+          if (resolved) {
+            const name = resolved.split(/[\\/]/).pop() ?? target;
+            await useWorkspace.getState().openFile(resolved, name);
+          } else {
+            toast.show(`No note named "${target}".`);
+          }
+        })();
+      },
     });
     viewRef.current = view;
 
@@ -112,6 +124,50 @@ export function EditorPane({ tab }: { tab: Tab }) {
       viewRef.current = null;
     };
   }, [tab.id]);
+
+  // React to external on-disk changes for this tab's file. Clean tabs reload
+  // silently; dirty tabs surface a toast.
+  useEffect(() => {
+    const off = vaultEventBus.on((e) => {
+      if (e.kind !== 'modified' || e.path !== tab.path) return;
+      if (e.hash === hashRef.current) return; // already in sync
+
+      const view = viewRef.current;
+      if (!view) return;
+
+      const currentDoc = view.state.doc.toString();
+      const savedDoc = useWorkspace.getState().openTabs.find((t) => t.id === tab.id)?.content;
+      const isDirty = currentDoc !== savedDoc;
+
+      const replaceWithDisk = async () => {
+        const fresh = await vaultRead(tab.path);
+        hashRef.current = fresh.hash;
+        const v = viewRef.current;
+        if (v) {
+          v.dispatch({
+            changes: { from: 0, to: v.state.doc.length, insert: fresh.content },
+          });
+        }
+        useWorkspace.getState().applyExternalChange(tab.path, fresh.content, fresh.hash);
+      };
+
+      if (!isDirty) {
+        void replaceWithDisk();
+      } else {
+        toast.show('File changed on disk while you were editing.', [
+          {
+            label: 'Keep my changes',
+            onClick: () => {
+              // Next save will see a stale hashRef and the existing Conflict
+              // toast (Reload / Overwrite) will let the user resolve.
+            },
+          },
+          { label: 'Use disk version', onClick: () => void replaceWithDisk() },
+        ]);
+      }
+    });
+    return off;
+  }, [tab.id, tab.path, toast]);
 
   return (
     <div className="editor-pane">

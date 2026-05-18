@@ -1,5 +1,6 @@
 import { EditorPane } from '../editor/EditorPane';
 import { useWorkspace } from '../state/workspaceStore';
+import { BacklinksPane } from './BacklinksPane';
 import { FileTree } from './FileTree';
 
 export function Workspace() {
@@ -46,6 +47,7 @@ export function Workspace() {
           )}
         </div>
       </main>
+      <BacklinksPane />
     </div>
   );
 }
