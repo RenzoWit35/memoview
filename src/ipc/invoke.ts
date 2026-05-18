@@ -8,6 +8,7 @@ export interface PickResult {
 
 export const vaultPick = () => invoke<PickResult | null>('vault_pick');
 export const vaultList = (path: string) => invoke<TFile[]>('vault_list', { path });
+export const vaultOpen = (path: string) => invoke<TFile[]>('vault_open', { path });
 export const vaultRead = (path: string) => invoke<ReadResult>('vault_read', { path });
 export const vaultWrite = (path: string, content: string, precondition: string | null) =>
   invoke<WriteResult>('vault_write', { path, content, precondition });

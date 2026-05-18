@@ -25,3 +25,13 @@ export interface AppErrorPayload {
   kind: AppErrorKind;
   message: string;
 }
+
+/**
+ * Events emitted by the Rust watcher when files in the active vault change.
+ * Serialized with `#[serde(tag = "kind", rename_all = "kebab-case")]`.
+ */
+export type VaultEvent =
+  | { kind: 'created'; path: string }
+  | { kind: 'modified'; path: string; hash: string }
+  | { kind: 'deleted'; path: string }
+  | { kind: 'renamed'; from: string; to: string };
