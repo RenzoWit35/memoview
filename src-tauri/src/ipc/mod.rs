@@ -28,7 +28,11 @@ pub async fn vault_pick<R: Runtime>(app: AppHandle<R>) -> AppResult<Option<PickR
     let Some(file_path) = chosen else {
         return Ok(None);
     };
-    let path = PathBuf::from(file_path.to_string());
+    // The dialog can return either FilePath::Path or FilePath::Url (e.g.
+    // `file:///C:/...` on Windows). into_path() converts both to a real PathBuf.
+    let path = file_path
+        .into_path()
+        .map_err(|e| AppError::InvalidPath(format!("dialog returned bad path: {e}")))?;
 
     let tree = vault::list(&path)?;
     config::set_last_vault(&app, &path)?;
@@ -64,7 +68,20 @@ fn bootstrap_vault<R: Runtime>(app: &AppHandle<R>, root: PathBuf) -> AppResult<(
         .filter_map(|p| {
             let bytes = std::fs::read(p).ok()?;
             let source = String::from_utf8(bytes).ok()?;
-            let facts = parser::parse(p, &source);
+            // Defensive: a malformed file shouldn't crash the indexing pass.
+            // catch_unwind keeps a panic in one note from killing the rayon
+            // worker (which would otherwise abort the whole Tauri process).
+            let source_clone = source.clone();
+            let path_clone = p.clone();
+            let facts = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                parser::parse(&path_clone, &source_clone)
+            })) {
+                Ok(f) => f,
+                Err(_) => {
+                    eprintln!("parser panicked on {}; skipping", p.display());
+                    return None;
+                }
+            };
             watcher_state
                 .hashes
                 .insert(p.clone(), facts.content_hash.clone());
