@@ -171,7 +171,7 @@ export function EditorPane({ tab }: { tab: Tab }) {
 
   return (
     <div className="editor-pane">
-      <div ref={hostRef} className="editor-pane__host" />
+      <div ref={hostRef} />
       <div className={`editor-pane__status editor-pane__status--${saveState}`}>
         {saveState === 'saving' ? 'Saving…' : null}
         {saveState === 'saved' ? 'Saved' : null}

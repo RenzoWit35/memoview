@@ -11,6 +11,8 @@ export interface Tab {
   dirty: boolean;
 }
 
+export type WorkspaceView = 'editor' | 'graph';
+
 interface WorkspaceState {
   vaultRoot: string | null;
   tree: TFile[];
@@ -19,6 +21,19 @@ interface WorkspaceState {
 
   openTabs: Tab[];
   activeTabId: string | null;
+
+  /** Which main pane is showing: the note editor or the graph. */
+  view: WorkspaceView;
+  /** Sidebar search; dims non-matching notes in the tree and the graph. */
+  searchQuery: string;
+  /** Top-level folder highlighted in the sidebar and isolated in the graph. */
+  folderFilter: string | null;
+
+  setView(view: WorkspaceView): void;
+  toggleView(): void;
+  setSearchQuery(q: string): void;
+  toggleFolderFilter(folder: string): void;
+  clearFolderFilter(): void;
 
   hydrate(): Promise<void>;
   pickVault(): Promise<void>;
@@ -43,6 +58,26 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   error: null,
   openTabs: [],
   activeTabId: null,
+
+  view: 'editor',
+  searchQuery: '',
+  folderFilter: null,
+
+  setView(view) {
+    set({ view });
+  },
+  toggleView() {
+    set((s) => ({ view: s.view === 'editor' ? 'graph' : 'editor' }));
+  },
+  setSearchQuery(searchQuery) {
+    set({ searchQuery });
+  },
+  toggleFolderFilter(folder) {
+    set((s) => ({ folderFilter: s.folderFilter === folder ? null : folder }));
+  },
+  clearFolderFilter() {
+    set({ folderFilter: null });
+  },
 
   async hydrate() {
     set({ loading: true, error: null });
@@ -77,14 +112,14 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
     // already open?
     const existing = get().openTabs.find((t) => t.path === path);
     if (existing) {
-      set({ activeTabId: existing.id });
+      set({ activeTabId: existing.id, view: 'editor' });
       return;
     }
     try {
       const { content, hash } = await vaultRead(path);
       const id = `${path}#${Date.now()}`;
       const tab: Tab = { id, path, name, content, hash, dirty: false };
-      set((s) => ({ openTabs: [...s.openTabs, tab], activeTabId: id }));
+      set((s) => ({ openTabs: [...s.openTabs, tab], activeTabId: id, view: 'editor' }));
     } catch (e) {
       set({ error: String(e) });
     }

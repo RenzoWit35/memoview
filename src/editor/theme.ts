@@ -3,28 +3,30 @@ import { EditorView } from '@codemirror/view';
 export const memoviewTheme = EditorView.theme(
   {
     '&': {
-      color: 'var(--fg)',
+      color: 'var(--c-on-surface-var)',
       backgroundColor: 'transparent',
-      height: '100%',
-      fontSize: '15px',
+      fontSize: '16px',
     },
     '.cm-scroller': {
-      fontFamily: 'ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace',
-      lineHeight: '1.6',
-      padding: '16px 24px',
+      fontFamily: 'var(--font-sans)',
+      lineHeight: '1.7',
     },
     '.cm-content': {
-      caretColor: 'var(--accent)',
+      caretColor: 'var(--c-primary)',
+      padding: '0 0 8px',
+    },
+    '.cm-line': {
+      padding: '0',
     },
     '.cm-cursor': {
-      borderLeftColor: 'var(--accent)',
+      borderLeftColor: 'var(--c-primary)',
     },
     '&.cm-focused .cm-selectionBackground, ::selection': {
-      backgroundColor: 'rgba(125, 211, 252, 0.25)',
+      backgroundColor: 'rgba(59, 191, 250, 0.22)',
     },
     '.cm-gutters': {
       backgroundColor: 'transparent',
-      color: 'var(--fg-muted)',
+      color: 'var(--c-on-surface-faint)',
       border: 'none',
     },
     '.cm-activeLine': {
