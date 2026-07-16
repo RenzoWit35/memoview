@@ -38,6 +38,10 @@ export type { VaultHandler, GraphDeltaHandler, GraphSnapshotHandler };
  * buses. Call once at app startup; returns a disposer.
  */
 export async function subscribeBackend(): Promise<Unsubscribe> {
+  if (typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window)) {
+    // Plain-browser dev session (mock backend): no upstream event streams.
+    return () => {};
+  }
   const unsubVault = await listen<VaultEvent>('vault:event', (msg) =>
     vaultEventBus.emit(msg.payload),
   );

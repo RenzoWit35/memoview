@@ -2,6 +2,7 @@ import type { BacklinkRef } from '@ipc/index';
 import { useEffect, useState } from 'react';
 import { graphDeltaBus, graphSnapshotBus } from '../ipc/events';
 import { graphBacklinks } from '../ipc/invoke';
+import { folderOf } from '../state/folders';
 import { useWorkspace } from '../state/workspaceStore';
 
 export function BacklinksPane() {
@@ -9,6 +10,8 @@ export function BacklinksPane() {
     const t = s.openTabs.find((x) => x.id === s.activeTabId);
     return t?.path ?? null;
   });
+  const vaultRoot = useWorkspace((s) => s.vaultRoot);
+  const openFile = useWorkspace((s) => s.openFile);
   const [items, setItems] = useState<BacklinkRef[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -45,28 +48,20 @@ export function BacklinksPane() {
     };
   }, [activePath]);
 
-  if (!activePath) {
-    return (
-      <aside className="backlinks">
-        <header className="backlinks__header">Backlinks</header>
-        <div className="backlinks__empty">No file selected.</div>
-      </aside>
-    );
-  }
-
-  const openFile = useWorkspace((s) => s.openFile);
-
   return (
     <aside className="backlinks">
       <header className="backlinks__header">
-        Backlinks
+        <span className="msi">link</span>
+        <span className="backlinks__label">Backlinks</span>
         <span className="backlinks__count">{items.length}</span>
       </header>
       <div className="backlinks__list">
-        {loading && items.length === 0 ? (
+        {!activePath ? (
+          <div className="backlinks__empty">No file selected.</div>
+        ) : loading && items.length === 0 ? (
           <div className="backlinks__empty">Loading…</div>
         ) : items.length === 0 ? (
-          <div className="backlinks__empty">No notes link here.</div>
+          <div className="backlinks__empty">No notes link here yet.</div>
         ) : (
           items.map((b) => {
             const name = basename(b.fromPath);
@@ -79,7 +74,7 @@ export function BacklinksPane() {
                 onClick={() => openFile(b.fromPath, name)}
               >
                 <span className="backlinks__title">{b.fromTitle}</span>
-                <span className={`backlinks__kind backlinks__kind--${b.kind}`}>{b.kind}</span>
+                <span className="backlinks__meta">{folderOf(b.fromPath, vaultRoot)}</span>
               </button>
             );
           })

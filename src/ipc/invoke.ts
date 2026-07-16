@@ -1,5 +1,20 @@
 import type { BacklinkRef, GraphSnapshot, ReadResult, TFile, WriteResult } from '@ipc/index';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke as tauriInvoke } from '@tauri-apps/api/core';
+
+export const hasTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+
+/**
+ * Route IPC through Tauri when running inside the shell; in a plain-browser
+ * dev session fall back to the in-memory mock backend (dev builds only —
+ * the DEV guard lets production bundles drop mock.ts entirely).
+ */
+const invoke = async <T>(cmd: string, args?: Record<string, unknown>): Promise<T> => {
+  if (!hasTauri && import.meta.env.DEV) {
+    const { mockInvoke } = await import('./mock');
+    return mockInvoke<T>(cmd, args);
+  }
+  return tauriInvoke<T>(cmd, args);
+};
 
 export interface PickResult {
   root: string;

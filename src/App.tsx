@@ -5,6 +5,7 @@ import { ToastProvider } from './app/Toast';
 import { VaultPicker } from './app/VaultPicker';
 import { Workspace } from './app/Workspace';
 import { subscribeBackend, vaultEventBus } from './ipc/events';
+import { useGraph } from './state/graphStore';
 import { useWorkspace } from './state/workspaceStore';
 
 const TREE_REFRESH_DEBOUNCE_MS = 200;
@@ -15,6 +16,10 @@ export function App() {
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    if (vaultRoot) void useGraph.getState().hydrate();
+  }, [vaultRoot]);
 
   useEffect(() => {
     let unsub: (() => void) | null = null;
