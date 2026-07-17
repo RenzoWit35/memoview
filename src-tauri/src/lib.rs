@@ -59,6 +59,7 @@ pub fn run() {
             ipc::graph_snapshot,
             ipc::graph_backlinks,
             ipc::graph_resolve_wikilink,
+            ipc::graph_resolve_md_link,
             ipc::search,
         ])
         .run(tauri::generate_context!())

@@ -239,6 +239,14 @@ export async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>)
       const target = byTitle.get(String(args?.target ?? ''));
       return (target ? pathOf(target) : null) as T;
     }
+    case 'graph_resolve_md_link': {
+      // Vault-relative path → note. The mock resolves by basename since the
+      // sample vault is flat inside each folder.
+      const raw = decodeURIComponent(String(args?.target ?? ''));
+      const base = raw.split('#')[0]?.split('/').pop()?.replace(/\.md$/, '') ?? '';
+      const target = byTitle.get(base);
+      return (target ? pathOf(target) : null) as T;
+    }
     case 'search': {
       const q = String(args?.query ?? '').toLowerCase();
       return NOTES.filter(

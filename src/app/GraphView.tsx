@@ -191,7 +191,7 @@ export function GraphView() {
       const key = `${e.from}|${e.to}`;
       if (dedup.has(key) || !accentById.has(e.from) || !accentById.has(e.to)) continue;
       dedup.add(key);
-      edgeList.push({ from: e.from, to: e.to, accent: accentById.get(e.from) ?? '#3bbffa' });
+      edgeList.push({ from: e.from, to: e.to, accent: accentById.get(e.from) ?? '#ff9838' });
     }
 
     const maxLinks = Math.max(1, ...items.map((n) => n.linkCount));
@@ -536,7 +536,7 @@ export function GraphView() {
             >
               <span
                 className="graph-node__count"
-                style={{ fontSize: `${v.fontSize}px`, color: 'rgba(6,14,32,0.75)' }}
+                style={{ fontSize: `${v.fontSize}px`, color: 'rgba(28,20,12,0.78)' }}
               >
                 {v.item.linkCount}
               </span>

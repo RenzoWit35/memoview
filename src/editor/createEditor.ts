@@ -4,7 +4,7 @@ import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { EditorState } from '@codemirror/state';
 import { EditorView, drawSelection, keymap } from '@codemirror/view';
 
-import { livePreview } from './livePreview';
+import { type LinkKind, livePreview } from './livePreview';
 import { memoviewTheme } from './theme';
 import { wikilinkParser } from './wikilink';
 
@@ -13,7 +13,7 @@ export interface CreateEditorOptions {
   initialDoc: string;
   onChange: (doc: string) => void;
   onSaveShortcut: () => void;
-  onOpenLink?: (target: string) => void;
+  onOpenLink?: (target: string, kind: LinkKind) => void;
 }
 
 export function createEditor(opts: CreateEditorOptions): EditorView {

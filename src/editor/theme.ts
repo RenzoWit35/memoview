@@ -22,7 +22,7 @@ export const memoviewTheme = EditorView.theme(
       borderLeftColor: 'var(--c-primary)',
     },
     '&.cm-focused .cm-selectionBackground, ::selection': {
-      backgroundColor: 'rgba(59, 191, 250, 0.22)',
+      backgroundColor: 'rgba(255, 152, 56, 0.22)',
     },
     '.cm-gutters': {
       backgroundColor: 'transparent',

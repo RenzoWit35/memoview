@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use smallvec::SmallVec;
 
-use super::patterns::FRONTMATTER;
+use super::patterns::{FRONTMATTER_TOML, FRONTMATTER_YAML};
 
 /// Detected and parsed YAML/TOML frontmatter at the start of a note. Anything
 /// we can't parse is left as `None` — the body is still returned and edge
@@ -41,19 +41,22 @@ enum Tags {
 /// Returns `(frontmatter, body)`. If no fence is present, body == input and
 /// frontmatter is `Frontmatter::default()`.
 pub fn split(input: &str) -> (Frontmatter, &str) {
-    let Some(captures) = FRONTMATTER.captures(input) else {
-        return (Frontmatter::default(), input);
+    let (captures, is_yaml) = match FRONTMATTER_YAML.captures(input) {
+        Some(c) => (c, true),
+        None => match FRONTMATTER_TOML.captures(input) {
+            Some(c) => (c, false),
+            None => return (Frontmatter::default(), input),
+        },
     };
-    let fence = captures.get(1).map(|m| m.as_str()).unwrap_or("");
-    let body_text = captures.get(2).map(|m| m.as_str()).unwrap_or("");
-    let remainder_match = captures.get(3);
+    let body_text = captures.get(1).map(|m| m.as_str()).unwrap_or("");
+    let remainder_match = captures.get(2);
 
     // Compute the slice of `input` corresponding to the body that follows.
     // Using a regex group's end offset is robust against newline variants.
     let body_start = remainder_match.map(|m| m.start()).unwrap_or(input.len());
     let body = &input[body_start..];
 
-    let fm = if fence == "---" {
+    let fm = if is_yaml {
         parse_yaml(body_text)
     } else {
         parse_toml(body_text)
