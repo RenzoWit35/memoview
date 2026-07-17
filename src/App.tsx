@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { CommandPalette } from './app/CommandPalette';
 import { ContextMenuProvider } from './app/ContextMenu';
 import { ToastProvider } from './app/Toast';
+import { UpdateChecker } from './app/UpdateChecker';
 import { VaultPicker } from './app/VaultPicker';
 import { Workspace } from './app/Workspace';
 import { subscribeBackend, vaultEventBus } from './ipc/events';
@@ -57,6 +58,7 @@ export function App() {
 
   return (
     <ToastProvider>
+      <UpdateChecker />
       <ContextMenuProvider>
         {vaultRoot ? <Workspace /> : <VaultPicker />}
         <CommandPalette />

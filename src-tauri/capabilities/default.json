@@ -10,6 +10,8 @@
     "core:webview:default",
     "core:path:default",
     "dialog:default",
-    "store:default"
+    "store:default",
+    "updater:default",
+    "process:allow-restart"
   ]
 }
