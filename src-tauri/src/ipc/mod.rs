@@ -69,19 +69,7 @@ fn bootstrap_vault<R: Runtime>(app: &AppHandle<R>, root: PathBuf) -> AppResult<(
             let bytes = std::fs::read(p).ok()?;
             let source = String::from_utf8(bytes).ok()?;
             // Defensive: a malformed file shouldn't crash the indexing pass.
-            // catch_unwind keeps a panic in one note from killing the rayon
-            // worker (which would otherwise abort the whole Tauri process).
-            let source_clone = source.clone();
-            let path_clone = p.clone();
-            let facts = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                parser::parse(&path_clone, &source_clone)
-            })) {
-                Ok(f) => f,
-                Err(_) => {
-                    eprintln!("parser panicked on {}; skipping", p.display());
-                    return None;
-                }
-            };
+            let facts = parser::try_parse(p, &source)?;
             watcher_state
                 .hashes
                 .insert(p.clone(), facts.content_hash.clone());
@@ -157,6 +145,16 @@ pub async fn vault_rename(
         &to,
     )
     .await
+}
+
+#[tauri::command]
+pub async fn vault_create_note(parent: PathBuf, name: String) -> AppResult<TFile> {
+    vault::create_note(&parent, &name).await
+}
+
+#[tauri::command]
+pub async fn vault_create_folder(parent: PathBuf, name: String) -> AppResult<TFile> {
+    vault::create_folder(&parent, &name).await
 }
 
 #[tauri::command]

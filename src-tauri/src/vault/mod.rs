@@ -34,7 +34,8 @@ pub struct WriteResult {
 const SKIP_DIRS: &[&str] = &[".git", ".obsidian", "node_modules", ".trash"];
 
 /// Recursively list a directory, returning a nested tree of files and folders. Only `.md`
-/// files (and folders containing them) are included.
+/// files are included; folders are always listed (even empty ones) so newly
+/// created folders appear in the tree.
 pub fn list(root: &Path) -> AppResult<Vec<TFile>> {
     if !root.exists() {
         return Err(AppError::NotFound(root.display().to_string()));
@@ -57,11 +58,9 @@ pub fn list(root: &Path) -> AppResult<Vec<TFile>> {
                 if SKIP_DIRS.contains(&name.as_str()) {
                     continue;
                 }
+                // Empty folders are kept: freshly created folders must show up
+                // in the tree so the user can put notes in them.
                 let children = walk(&path)?;
-                // Skip empty subtrees so the tree view stays tidy.
-                if children.is_empty() {
-                    continue;
-                }
                 entries.push(TFile {
                     path,
                     name,
@@ -154,6 +153,99 @@ pub async fn write_atomic(
     Ok(WriteResult { hash })
 }
 
+/// Reject names that would escape the parent directory or are empty.
+fn validate_name(name: &str) -> AppResult<String> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err(AppError::InvalidPath("name is empty".to_string()));
+    }
+    if trimmed == "." || trimmed == ".." || trimmed.contains('/') || trimmed.contains('\\') {
+        return Err(AppError::InvalidPath(format!("invalid name: {trimmed}")));
+    }
+    Ok(trimmed.to_string())
+}
+
+/// Create an empty `name.md` under `parent`, auto-suffixing (`Name 1.md`,
+/// `Name 2.md`, …) when the name is taken. `create_new` makes the
+/// exists-check-and-create atomic, so concurrent creates can't clobber.
+pub async fn create_note(parent: &Path, name: &str) -> AppResult<TFile> {
+    if !parent.is_dir() {
+        return Err(AppError::InvalidPath(format!(
+            "{} is not a directory",
+            parent.display()
+        )));
+    }
+    let cleaned = validate_name(name)?;
+    let stem = cleaned.strip_suffix(".md").unwrap_or(&cleaned).trim_end();
+    if stem.is_empty() {
+        return Err(AppError::InvalidPath("name is empty".to_string()));
+    }
+
+    for i in 0..1000u32 {
+        let file_name = if i == 0 {
+            format!("{stem}.md")
+        } else {
+            format!("{stem} {i}.md")
+        };
+        let candidate = parent.join(&file_name);
+        match tokio::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&candidate)
+            .await
+        {
+            Ok(_) => {
+                return Ok(TFile {
+                    path: candidate,
+                    name: file_name,
+                    is_dir: false,
+                    children: None,
+                })
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e.into()),
+        }
+    }
+    Err(AppError::InvalidPath(format!(
+        "could not find a free name for {stem}.md"
+    )))
+}
+
+/// Create a folder under `parent`, auto-suffixing when the name is taken.
+pub async fn create_folder(parent: &Path, name: &str) -> AppResult<TFile> {
+    if !parent.is_dir() {
+        return Err(AppError::InvalidPath(format!(
+            "{} is not a directory",
+            parent.display()
+        )));
+    }
+    let cleaned = validate_name(name)?;
+
+    for i in 0..1000u32 {
+        let dir_name = if i == 0 {
+            cleaned.clone()
+        } else {
+            format!("{cleaned} {i}")
+        };
+        let candidate = parent.join(&dir_name);
+        match tokio::fs::create_dir(&candidate).await {
+            Ok(()) => {
+                return Ok(TFile {
+                    path: candidate,
+                    name: dir_name,
+                    is_dir: true,
+                    children: Some(Vec::new()),
+                })
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e.into()),
+        }
+    }
+    Err(AppError::InvalidPath(format!(
+        "could not find a free name for {cleaned}"
+    )))
+}
+
 /// Atomically rename a file. Used by the rename-refactor flow. The watcher
 /// echo for both `from` and `to` should already have been suppressed by the
 /// caller.
@@ -171,4 +263,57 @@ pub fn count_markdown_files(root: &Path) -> usize {
         .filter_map(|e| e.ok())
         .filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("md"))
         .count()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_vault() -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("memoview-test-{}", rand::random::<u64>()));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[tokio::test]
+    async fn create_note_appends_md_and_auto_suffixes() {
+        let root = temp_vault();
+        let a = create_note(&root, "Test").await.unwrap();
+        assert_eq!(a.name, "Test.md");
+        assert!(a.path.exists());
+
+        let b = create_note(&root, "Test.md").await.unwrap();
+        assert_eq!(b.name, "Test 1.md");
+        assert!(b.path.exists());
+
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn create_note_rejects_bad_names() {
+        let root = temp_vault();
+        assert!(create_note(&root, "").await.is_err());
+        assert!(create_note(&root, "..").await.is_err());
+        assert!(create_note(&root, "a/b").await.is_err());
+        assert!(create_note(&root, "a\\b").await.is_err());
+        assert!(create_note(&root, ".md").await.is_err());
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn create_folder_auto_suffixes_and_lists_empty() {
+        let root = temp_vault();
+        let a = create_folder(&root, "Notes").await.unwrap();
+        assert_eq!(a.name, "Notes");
+        let b = create_folder(&root, "Notes").await.unwrap();
+        assert_eq!(b.name, "Notes 1");
+
+        // Empty folders must appear in the tree listing.
+        let tree = list(&root).unwrap();
+        let names: Vec<&str> = tree.iter().map(|f| f.name.as_str()).collect();
+        assert!(names.contains(&"Notes"));
+        assert!(names.contains(&"Notes 1"));
+
+        std::fs::remove_dir_all(&root).unwrap();
+    }
 }

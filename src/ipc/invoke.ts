@@ -41,6 +41,10 @@ export const vaultWrite = (path: string, content: string, precondition: string |
   invoke<WriteResult>('vault_write', { path, content, precondition });
 export const vaultRename = (from: string, to: string) =>
   invoke<RenameReport>('vault_rename', { from, to });
+export const vaultCreateNote = (parent: string, name: string) =>
+  invoke<TFile>('vault_create_note', { parent, name });
+export const vaultCreateFolder = (parent: string, name: string) =>
+  invoke<TFile>('vault_create_folder', { parent, name });
 export const lastVault = () => invoke<string | null>('last_vault');
 
 export const graphSnapshot = () => invoke<GraphSnapshot>('graph_snapshot');

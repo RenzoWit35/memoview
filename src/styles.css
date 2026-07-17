@@ -207,6 +207,32 @@ button {
   color: var(--c-on-surface-faint);
 }
 
+.sidebar__actions {
+  display: flex;
+  gap: 8px;
+  padding: 8px 14px 4px;
+}
+.sidebar__action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--c-outline-faint);
+  background: var(--c-surface-container);
+  color: var(--c-on-surface);
+  font: 600 11.5px / 1 var(--font-sans);
+}
+.sidebar__action-btn:hover {
+  background: var(--c-surface-high);
+}
+.sidebar__action-btn .msi {
+  font-size: 15px;
+  color: var(--c-on-surface-faint);
+}
+
 /* File tree ---------------------------------------------------------------- */
 
 .file-tree {

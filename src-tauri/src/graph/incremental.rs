@@ -16,7 +16,9 @@ pub fn integrate_file(graph: &GraphIndex, path: &Path) -> GraphDelta {
     let Ok(source) = String::from_utf8(bytes) else {
         return GraphDelta::default();
     };
-    let facts = parser::parse(path, &source);
+    let Some(facts) = parser::try_parse(path, &source) else {
+        return GraphDelta::default();
+    };
     integrate(graph, path, &facts)
 }
 
@@ -76,11 +78,17 @@ fn integrate(graph: &GraphIndex, path: &Path, facts: &NoteFacts) -> GraphDelta {
     let (mut edges_added, edges_removed) = topology_diff(&old_edges, &new_edges);
     edges_added.extend(promoted);
 
-    let view = graph
-        .notes
-        .get(&id)
-        .map(|n| NoteView::from(n.value()))
-        .unwrap();
+    // The note can vanish between upsert and here (concurrent delete event);
+    // emit just the edge changes rather than panicking.
+    let Some(view) = graph.notes.get(&id).map(|n| NoteView::from(n.value())) else {
+        return GraphDelta {
+            notes_added: vec![],
+            notes_removed: vec![],
+            notes_updated: vec![],
+            edges_added,
+            edges_removed,
+        };
+    };
 
     GraphDelta {
         notes_added: if was_new { vec![view.clone()] } else { vec![] },

@@ -53,6 +53,8 @@ pub fn run() {
             ipc::vault_read,
             ipc::vault_write,
             ipc::vault_rename,
+            ipc::vault_create_note,
+            ipc::vault_create_folder,
             ipc::last_vault,
             ipc::graph_snapshot,
             ipc::graph_backlinks,
