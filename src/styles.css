@@ -1,7 +1,8 @@
 /* ---------------------------------------------------------------------------
  * Memoview design system — ported from the Claude Design export
- * (Memoview.dc.html). Dark glass theme: deep navy surfaces, blue/violet/teal
- * accents, pill-shaped controls, Plus Jakarta Sans + Material Symbols.
+ * (Memoview.dc.html). Dark glass theme: charcoal-gray surfaces with warm
+ * orange/amber/copper accents, pill-shaped controls, Plus Jakarta Sans +
+ * Material Symbols.
  * ------------------------------------------------------------------------- */
 
 @font-face {
@@ -21,25 +22,25 @@
 }
 
 :root {
-  --c-primary: rgb(59 191 250);
-  --c-primary-dim: rgb(5 169 227);
-  --c-primary-container: rgb(34 177 236);
-  --c-on-primary: rgb(0 55 77);
-  --c-secondary: rgb(138 149 255);
-  --c-secondary-container: rgb(47 58 163);
-  --c-tertiary: rgb(72 229 208);
-  --c-tertiary-container: rgb(101 253 230);
+  --c-primary: rgb(255 152 56);
+  --c-primary-dim: rgb(229 122 24);
+  --c-primary-container: rgb(240 132 32);
+  --c-on-primary: rgb(56 28 0);
+  --c-secondary: rgb(255 199 112);
+  --c-secondary-container: rgb(146 92 30);
+  --c-tertiary: rgb(224 121 90);
+  --c-tertiary-container: rgb(250 150 118);
   --c-error: rgb(255 113 108);
-  --c-background: rgb(6 14 32);
-  --c-surface-low: rgb(9 19 40);
-  --c-surface-container: rgb(15 25 48);
-  --c-surface-high: rgb(20 31 56);
-  --c-surface-highest: rgb(25 37 64);
-  --c-on-surface: rgb(222 229 255);
-  --c-on-surface-var: rgb(163 170 196);
-  --c-on-surface-faint: rgba(163, 170, 196, 0.55);
-  --c-outline-faint: rgba(64, 72, 93, 0.35);
-  --glass-fill: rgba(15, 25, 48, 0.6);
+  --c-background: rgb(17 16 15);
+  --c-surface-low: rgb(23 22 21);
+  --c-surface-container: rgb(31 29 28);
+  --c-surface-high: rgb(40 38 36);
+  --c-surface-highest: rgb(50 47 44);
+  --c-on-surface: rgb(236 231 224);
+  --c-on-surface-var: rgb(178 172 164);
+  --c-on-surface-faint: rgba(178, 172, 164, 0.55);
+  --c-outline-faint: rgba(112, 106, 98, 0.35);
+  --glass-fill: rgba(31, 29, 28, 0.6);
   --glass-blur: 24px;
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-icons: "Material Symbols Outlined";
@@ -66,10 +67,10 @@ body {
   font-family: var(--font-sans);
   color: var(--c-on-surface);
   background: var(--c-background);
-  background-image: radial-gradient(ellipse 60% 55% at 12% 20%, #0e0833 0%, transparent 60%),
-    radial-gradient(ellipse 50% 60% at 87% 10%, #071840 0%, transparent 60%),
-    radial-gradient(ellipse 70% 40% at 50% 92%, #061a30 0%, transparent 60%),
-    radial-gradient(ellipse 40% 55% at 77% 55%, #120828 0%, transparent 55%);
+  background-image: radial-gradient(ellipse 60% 55% at 12% 20%, #2a1a0c 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 87% 10%, #221510 0%, transparent 60%),
+    radial-gradient(ellipse 70% 40% at 50% 92%, #1c1410 0%, transparent 60%),
+    radial-gradient(ellipse 40% 55% at 77% 55%, #241108 0%, transparent 55%);
   background-attachment: fixed;
 }
 
@@ -158,7 +159,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 18px rgba(59, 191, 250, 0.35);
+  box-shadow: 0 0 18px rgba(255, 152, 56, 0.35);
 }
 .logo-orb .msi {
   font-size: 16px;
@@ -470,7 +471,7 @@ button {
 .view-toggle--primary {
   background: var(--c-primary);
   color: var(--c-on-primary);
-  box-shadow: 0 8px 24px rgba(59, 191, 250, 0.28);
+  box-shadow: 0 8px 24px rgba(255, 152, 56, 0.28);
 }
 .view-toggle .msi {
   font-size: 17px;
@@ -572,7 +573,7 @@ button {
   padding: 0 2px;
 }
 .cm-wikilink:hover {
-  background: rgba(59, 191, 250, 0.14);
+  background: rgba(255, 152, 56, 0.14);
   text-decoration: underline;
 }
 .cm-embed {
@@ -936,7 +937,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 28px rgba(59, 191, 250, 0.4);
+  box-shadow: 0 0 28px rgba(255, 152, 56, 0.4);
 }
 .vault-picker__orb .msi {
   font-size: 26px;
@@ -958,7 +959,7 @@ button {
   padding: 10px 24px;
   border-radius: 9999px;
   font: 700 13px / 1 var(--font-sans);
-  box-shadow: 0 8px 24px rgba(59, 191, 250, 0.28);
+  box-shadow: 0 8px 24px rgba(255, 152, 56, 0.28);
 }
 .vault-picker__card button:hover {
   filter: brightness(1.08);
@@ -1011,7 +1012,7 @@ button {
   color: var(--c-primary);
 }
 .toast__actions button:hover {
-  background: rgba(59, 191, 250, 0.14);
+  background: rgba(255, 152, 56, 0.14);
 }
 
 /* Context menu ------------------------------------------------------------- */

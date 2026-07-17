@@ -7,9 +7,9 @@ import { useWorkspace } from './workspaceStore';
 
 export const ROOT_FOLDER = 'Vault';
 
-/** Accent hexes from the design: primary blue, secondary violet, tertiary teal. */
-const ACCENT_HEXES = ['#3bbffa', '#8a95ff', '#48e5d0'];
-const ACCENT_FALLBACK = '#3bbffa';
+/** Accent hexes from the design: primary orange, secondary amber, tertiary copper. */
+const ACCENT_HEXES = ['#ff9838', '#ffc770', '#e0795a'];
+const ACCENT_FALLBACK = '#ff9838';
 
 export function relPath(path: string, root: string | null): string {
   if (!root) return path;
