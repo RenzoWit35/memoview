@@ -70,7 +70,11 @@ of the current `graphStore`:
 
 ---
 
-## Part 2 — Auto-update
+## Part 2 — Auto-update ✅ (implemented on this branch)
+
+> Status: everything below is implemented. The only manual step left is adding
+> the `TAURI_SIGNING_PRIVATE_KEY` GitHub Actions secret before cutting the next
+> release tag.
 
 Memoview is a Tauri v2 app with a working release pipeline
 (`.github/workflows/release.yml`, builds Win/macOS/Linux on every `v*` tag).
