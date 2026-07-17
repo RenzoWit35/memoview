@@ -102,8 +102,9 @@ async fn update_search(ev: &VaultEvent, search: &SearchIndex) {
         VaultEvent::Created { path } | VaultEvent::Modified { path, .. } => {
             if let Ok(bytes) = tokio::fs::read(path).await {
                 if let Ok(source) = String::from_utf8(bytes) {
-                    let facts = crate::parser::parse(path, &source);
-                    search.upsert(path, &facts.title, &source);
+                    if let Some(facts) = crate::parser::try_parse(path, &source) {
+                        search.upsert(path, &facts.title, &source);
+                    }
                 }
             }
         }
@@ -112,8 +113,9 @@ async fn update_search(ev: &VaultEvent, search: &SearchIndex) {
             search.rename(from, to);
             if let Ok(bytes) = tokio::fs::read(to).await {
                 if let Ok(source) = String::from_utf8(bytes) {
-                    let facts = crate::parser::parse(to, &source);
-                    search.upsert(to, &facts.title, &source);
+                    if let Some(facts) = crate::parser::try_parse(to, &source) {
+                        search.upsert(to, &facts.title, &source);
+                    }
                 }
             }
         }

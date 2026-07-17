@@ -1,16 +1,50 @@
 import { EditorPane } from '../editor/EditorPane';
+import { vaultCreateFolder, vaultCreateNote } from '../ipc/invoke';
 import { folderOf, useFolderAccent } from '../state/folders';
 import { outgoingNotes, useGraph } from '../state/graphStore';
 import { type Tab, useWorkspace } from '../state/workspaceStore';
 import { BacklinksPane } from './BacklinksPane';
 import { FileTree } from './FileTree';
 import { GraphView, useGraphView } from './GraphView';
+import { useToast } from './Toast';
 
 function Sidebar() {
   const vaultRoot = useWorkspace((s) => s.vaultRoot);
   const searchQuery = useWorkspace((s) => s.searchQuery);
   const setSearchQuery = useWorkspace((s) => s.setSearchQuery);
+  const refreshTree = useWorkspace((s) => s.refreshTree);
+  const openFile = useWorkspace((s) => s.openFile);
+  const toast = useToast();
   const vaultName = vaultRoot ? (vaultRoot.split(/[\\/]/).pop() ?? vaultRoot) : 'No vault';
+
+  const createNote = () => {
+    if (!vaultRoot) return;
+    const name = window.prompt('New note name', 'Untitled');
+    if (!name || name.trim() === '') return;
+    void (async () => {
+      try {
+        const file = await vaultCreateNote(vaultRoot, name.trim());
+        await refreshTree();
+        await openFile(file.path, file.name);
+      } catch (err) {
+        toast.show(`Create note failed: ${String(err)}`);
+      }
+    })();
+  };
+
+  const createFolder = () => {
+    if (!vaultRoot) return;
+    const name = window.prompt('New folder name', 'New folder');
+    if (!name || name.trim() === '') return;
+    void (async () => {
+      try {
+        await vaultCreateFolder(vaultRoot, name.trim());
+        await refreshTree();
+      } catch (err) {
+        toast.show(`Create folder failed: ${String(err)}`);
+      }
+    })();
+  };
 
   return (
     <aside className="sidebar">
@@ -33,6 +67,26 @@ function Sidebar() {
             aria-label="Search notes"
           />
         </div>
+      </div>
+      <div className="sidebar__actions">
+        <button
+          type="button"
+          className="sidebar__action-btn"
+          onClick={createNote}
+          title="Create a new note in the vault root"
+        >
+          <span className="msi">note_add</span>
+          New note
+        </button>
+        <button
+          type="button"
+          className="sidebar__action-btn"
+          onClick={createFolder}
+          title="Create a new folder in the vault root"
+        >
+          <span className="msi">create_new_folder</span>
+          New folder
+        </button>
       </div>
       <FileTree />
     </aside>

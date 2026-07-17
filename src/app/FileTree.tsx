@@ -1,6 +1,6 @@
 import type { TFile } from '@ipc/index';
 import { useState } from 'react';
-import { vaultRename } from '../ipc/invoke';
+import { vaultCreateFolder, vaultCreateNote, vaultRename } from '../ipc/invoke';
 import { ROOT_FOLDER, useFolderAccent } from '../state/folders';
 import { useWorkspace } from '../state/workspaceStore';
 import { useContextMenu } from './ContextMenu';
@@ -81,21 +81,60 @@ function FolderNode({ file, depth, topFolder }: FolderNodeProps) {
   const [expanded, setExpanded] = useState(depth < 1);
   const folderFilter = useWorkspace((s) => s.folderFilter);
   const toggleFolderFilter = useWorkspace((s) => s.toggleFolderFilter);
+  const refreshTree = useWorkspace((s) => s.refreshTree);
+  const openFile = useWorkspace((s) => s.openFile);
+  const ctx = useContextMenu();
+  const toast = useToast();
 
   const accent = useFolderAccent()(topFolder);
   const isTopLevel = depth === 0;
   const isFiltered = isTopLevel && folderFilter === topFolder;
   const count = countNotes(file);
 
-  const onRowClick = () => {
-    // Top-level folders drive the graph's folder filter (per the design);
-    // deeper folders just expand/collapse.
+  const handleContextMenu: React.MouseEventHandler = (e) => {
+    e.preventDefault();
+    const items = [
+      {
+        label: 'New note…',
+        onClick: () => {
+          const name = window.prompt('New note name', 'Untitled');
+          if (!name || name.trim() === '') return;
+          void (async () => {
+            try {
+              const created = await vaultCreateNote(file.path, name.trim());
+              setExpanded(true);
+              await refreshTree();
+              await openFile(created.path, created.name);
+            } catch (err) {
+              toast.show(`Create note failed: ${String(err)}`);
+            }
+          })();
+        },
+      },
+      {
+        label: 'New folder…',
+        onClick: () => {
+          const name = window.prompt('New folder name', 'New folder');
+          if (!name || name.trim() === '') return;
+          void (async () => {
+            try {
+              await vaultCreateFolder(file.path, name.trim());
+              setExpanded(true);
+              await refreshTree();
+            } catch (err) {
+              toast.show(`Create folder failed: ${String(err)}`);
+            }
+          })();
+        },
+      },
+    ];
     if (isTopLevel) {
-      toggleFolderFilter(topFolder);
-      if (!expanded) setExpanded(true);
-    } else {
-      setExpanded((v) => !v);
+      items.push({
+        label: isFiltered ? 'Clear graph focus' : 'Focus in graph',
+        onClick: () => toggleFolderFilter(topFolder),
+      });
     }
+    ctx.open(e.clientX, e.clientY, items);
   };
 
   return (
@@ -103,12 +142,13 @@ function FolderNode({ file, depth, topFolder }: FolderNodeProps) {
       <div
         className={`tree-folder__row ${isFiltered ? 'tree-folder__row--filtered' : ''}`}
         style={{ paddingLeft: `${10 + depth * 16}px` }}
+        onContextMenu={handleContextMenu}
       >
         <button
           type="button"
           className="tree-folder__main"
-          onClick={onRowClick}
-          title={isTopLevel ? 'Click to focus this folder in the graph' : undefined}
+          onClick={() => setExpanded((v) => !v)}
+          title={expanded ? `Collapse ${file.name}` : `Expand ${file.name}`}
         >
           <span className="msi" style={{ color: accent }}>
             folder

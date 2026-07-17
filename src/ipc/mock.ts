@@ -135,8 +135,10 @@ const contents = new Map<string, string>(
 let hashCounter = 0;
 const hashes = new Map<string, string>(NOTES.map((n) => [pathOf(n), `mock-${hashCounter++}`]));
 
+let nextId = Math.max(...NOTES.map((n) => n.id)) + 1;
+
 function tree(): TFile[] {
-  return FOLDER_ORDER.map((folder) => ({
+  const dirs: TFile[] = FOLDER_ORDER.map((folder) => ({
     path: `${ROOT}/${folder}`,
     name: folder,
     isDir: true,
@@ -147,6 +149,13 @@ function tree(): TFile[] {
       children: null,
     })),
   }));
+  const rootFiles: TFile[] = NOTES.filter((n) => n.folder === null).map((n) => ({
+    path: pathOf(n),
+    name: `${n.title}.md`,
+    isDir: false,
+    children: null,
+  }));
+  return [...dirs, ...rootFiles];
 }
 
 function snapshot(): GraphSnapshot {
@@ -198,6 +207,30 @@ export async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>)
     }
     case 'vault_rename':
       return { filesRewritten: 0, occurrences: 0 } as T;
+    case 'vault_create_note': {
+      const parent = String(args?.parent ?? ROOT);
+      const base = String(args?.name ?? 'Untitled')
+        .replace(/\.md$/, '')
+        .trim();
+      const folder = parent === ROOT ? null : (parent.split('/').pop() ?? null);
+      let title = base;
+      for (let i = 1; byTitle.has(title); i++) title = `${base} ${i}`;
+      const note: MockNote = { id: nextId++, title, folder, out: [], para: [] };
+      NOTES.push(note);
+      byTitle.set(title, note);
+      byPath.set(pathOf(note), note);
+      contents.set(pathOf(note), '');
+      hashes.set(pathOf(note), `mock-${hashCounter++}`);
+      return { path: pathOf(note), name: `${title}.md`, isDir: false, children: null } as T;
+    }
+    case 'vault_create_folder': {
+      // The mock vault is single-level: new folders always land at the root.
+      const base = String(args?.name ?? 'New folder').trim();
+      let name = base;
+      for (let i = 1; FOLDER_ORDER.includes(name); i++) name = `${base} ${i}`;
+      FOLDER_ORDER.push(name);
+      return { path: `${ROOT}/${name}`, name, isDir: true, children: [] } as T;
+    }
     case 'graph_snapshot':
       return snapshot() as T;
     case 'graph_backlinks':
