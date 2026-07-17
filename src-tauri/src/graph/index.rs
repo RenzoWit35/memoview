@@ -117,6 +117,21 @@ impl GraphIndex {
         self.path_for(candidates[0])
     }
 
+    /// Resolve a standard markdown link target (a vault-relative path such as
+    /// `../Research/Note.md`, possibly percent-encoded and possibly carrying a
+    /// `#anchor`) from a source note to a real path.
+    pub fn resolve_md_link_from(&self, source: &Path, target: &str) -> Option<PathBuf> {
+        let id = self.id_for_path(source)?;
+        let decoded = percent_decode(target);
+        let stripped = decoded.split('#').next().unwrap_or("");
+        if stripped.is_empty() {
+            return None;
+        }
+        self.resolve_md_link(id, stripped)
+            .or_else(|| self.resolve_md_link(id, target))
+            .and_then(|to| self.path_for(to))
+    }
+
     pub fn record_hash(&self, path: &Path, hash: String) {
         if let Some(id) = self.id_for_path(path) {
             if let Some(mut n) = self.notes.get_mut(&id) {
@@ -298,6 +313,35 @@ fn collected_names_from_facts(path: &Path, facts: &NoteFacts) -> HashSet<String>
     s
 }
 
+/// Byte-level %XX decoding (`my%20note.md` → `my note.md`). Works on raw bytes
+/// so a stray `%` inside a multi-byte character can't cause a panic; invalid
+/// UTF-8 after decoding falls back to the original string.
+fn percent_decode(s: &str) -> String {
+    fn hex_val(b: u8) -> Option<u8> {
+        match b {
+            b'0'..=b'9' => Some(b - b'0'),
+            b'a'..=b'f' => Some(b - b'a' + 10),
+            b'A'..=b'F' => Some(b - b'A' + 10),
+            _ => None,
+        }
+    }
+    let bytes = s.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let (Some(hi), Some(lo)) = (hex_val(bytes[i + 1]), hex_val(bytes[i + 2])) {
+                out.push(hi * 16 + lo);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8(out).unwrap_or_else(|_| s.to_string())
+}
+
 fn normalize_path(p: &Path) -> PathBuf {
     let mut out = PathBuf::new();
     for c in p.components() {
@@ -345,5 +389,29 @@ pub(super) fn fact_kind_to_edge(k: EdgeFactKind) -> EdgeKind {
         EdgeFactKind::WikiLink => EdgeKind::WikiLink,
         EdgeFactKind::Embed => EdgeKind::Embed,
         EdgeFactKind::MdLink => EdgeKind::MdLink,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser;
+
+    #[test]
+    fn md_link_resolution_decodes_and_strips_anchors() {
+        let g = GraphIndex::new();
+        let a = PathBuf::from("/v/Projects/My Note.md");
+        let b = PathBuf::from("/v/Projects/Other.md");
+        let fa = parser::parse(&a, "hello");
+        let fb = parser::parse(&b, "see [link](My%20Note.md)");
+        g.upsert_note(&a, &fa);
+        g.upsert_note(&b, &fb);
+
+        assert_eq!(g.resolve_md_link_from(&b, "My%20Note.md"), Some(a.clone()));
+        assert_eq!(g.resolve_md_link_from(&b, "My Note.md#section"), Some(a.clone()));
+        assert_eq!(g.resolve_md_link_from(&b, "My Note"), Some(a.clone()));
+        assert_eq!(g.resolve_md_link_from(&b, "./My Note.md"), Some(a));
+        assert_eq!(g.resolve_md_link_from(&b, "missing.md"), None);
+        assert_eq!(g.resolve_md_link_from(&b, "#just-an-anchor"), None);
     }
 }

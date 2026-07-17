@@ -24,8 +24,15 @@ pub static MD_LINK: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"\[([^\]\n]*)\]\(([^)\n]+)\)").expect("md link regex")
 });
 
-/// Frontmatter fence at byte 0 — YAML uses `---`, TOML uses `+++`.
-/// Capture 1 = fence kind, 2 = body, 3 = remainder after closing fence.
-pub static FRONTMATTER: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?s)^(---|\+\+\+)\r?\n(.*?)\r?\n\1\r?\n?(.*)$").expect("frontmatter regex")
+/// Frontmatter fence at byte 0 — YAML uses `---`, TOML uses `+++`. Two
+/// separate patterns because the `regex` crate has no backreferences (a
+/// single pattern with `\1` fails to compile — and that panic used to take
+/// down every parse).
+/// Capture 1 = body, 2 = remainder after the closing fence.
+pub static FRONTMATTER_YAML: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?s)^---\r?\n(.*?)\r?\n---\r?\n?(.*)$").expect("yaml frontmatter regex")
+});
+
+pub static FRONTMATTER_TOML: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?s)^\+\+\+\r?\n(.*?)\r?\n\+\+\+\r?\n?(.*)$").expect("toml frontmatter regex")
 });

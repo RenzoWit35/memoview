@@ -51,6 +51,8 @@ export const graphSnapshot = () => invoke<GraphSnapshot>('graph_snapshot');
 export const graphBacklinks = (path: string) => invoke<BacklinkRef[]>('graph_backlinks', { path });
 export const graphResolveWikilink = (source: string | null, target: string) =>
   invoke<string | null>('graph_resolve_wikilink', { source, target });
+export const graphResolveMdLink = (source: string, target: string) =>
+  invoke<string | null>('graph_resolve_md_link', { source, target });
 
 export const search = (query: string, limit?: number) =>
   invoke<SearchHit[]>('search', { query, limit: limit ?? null });

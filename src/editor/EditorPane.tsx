@@ -2,7 +2,7 @@ import type { EditorView } from '@codemirror/view';
 import { useEffect, useRef, useState } from 'react';
 import { useToast } from '../app/Toast';
 import { vaultEventBus } from '../ipc/events';
-import { graphResolveWikilink, vaultRead, vaultWrite } from '../ipc/invoke';
+import { graphResolveMdLink, graphResolveWikilink, vaultRead, vaultWrite } from '../ipc/invoke';
 import type { Tab } from '../state/workspaceStore';
 import { useWorkspace } from '../state/workspaceStore';
 import { createEditor } from './createEditor';
@@ -103,14 +103,21 @@ export function EditorPane({ tab }: { tab: Tab }) {
       onSaveShortcut: () => {
         void flush();
       },
-      onOpenLink: (target) => {
+      onOpenLink: (target, kind) => {
         void (async () => {
-          const resolved = await graphResolveWikilink(tab.path, target);
+          const resolved =
+            kind === 'mdlink'
+              ? await graphResolveMdLink(tab.path, target)
+              : await graphResolveWikilink(tab.path, target);
           if (resolved) {
             const name = resolved.split(/[\\/]/).pop() ?? target;
             await useWorkspace.getState().openFile(resolved, name);
           } else {
-            toast.show(`No note named "${target}".`);
+            toast.show(
+              kind === 'mdlink'
+                ? `Can't find "${target}" in the vault.`
+                : `No note named "${target}".`,
+            );
           }
         })();
       },

@@ -617,6 +617,35 @@ button {
 .cm-heading-6 {
   font-size: 1.05em;
 }
+.cm-strike {
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+.cm-blockquote-line {
+  border-left: 3px solid var(--c-primary);
+  padding-left: 12px !important;
+}
+.cm-bullet {
+  color: var(--c-primary);
+  display: inline-block;
+  min-width: 1ch;
+}
+.cm-list-number {
+  color: var(--c-primary);
+  font-weight: 600;
+}
+.cm-hr {
+  display: inline-block;
+  width: 100%;
+  vertical-align: middle;
+  border-top: 1px solid var(--c-outline-faint);
+}
+.cm-task {
+  accent-color: var(--c-primary);
+  vertical-align: middle;
+  cursor: pointer;
+  margin: 0 2px;
+}
 
 /* Links out ---------------------------------------------------------------- */
 

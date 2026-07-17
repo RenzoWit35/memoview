@@ -173,6 +173,15 @@ pub fn graph_backlinks(graph: State<'_, Arc<GraphIndex>>, path: PathBuf) -> Vec<
 }
 
 #[tauri::command]
+pub fn graph_resolve_md_link(
+    graph: State<'_, Arc<GraphIndex>>,
+    source: PathBuf,
+    target: String,
+) -> Option<PathBuf> {
+    graph.resolve_md_link_from(&source, &target)
+}
+
+#[tauri::command]
 pub fn graph_resolve_wikilink(
     graph: State<'_, Arc<GraphIndex>>,
     source: Option<PathBuf>,
