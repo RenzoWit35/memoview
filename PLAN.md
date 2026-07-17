@@ -8,15 +8,28 @@ Every branch was compared against `main`. Result:
 
 | Branch | Verdict | Why |
 | --- | --- | --- |
-| `claude/obsidian-clone-architecture-YD0Mi` | **Deleted** | Fully merged into main. |
-| `claude/m3-watcher` | **Deleted** | Fully merged into main. |
-| `claude/m4-graph` | **Deleted** | Fully merged into main. |
-| `claude/m5-m6-m8-finish` | **Deleted** | Fully merged into main. |
-| `claude/release-pipeline` | **Deleted** | Fully merged into main (PR #5). |
-| `claude/fix-pnpm-version-mismatch` | **Deleted** | Fully merged into main (PR #6). |
-| `claude/implement-memoview-design-spv726` | **Deleted** | Fully merged into main (PR #9). |
-| `claude/fix-windows-vault-open` (PR #7) | **Rescued, then deleted** | Good fix that never got merged. Cherry-picked into this branch (see below). |
-| `claude/m7-graph-view` (PR #8) | **Deleted — superseded** | Good idea, outdated implementation. See notes below. |
+| `claude/obsidian-clone-architecture-YD0Mi` | **Safe to delete** | Fully merged into main. |
+| `claude/m3-watcher` | **Safe to delete** | Fully merged into main. |
+| `claude/m4-graph` | **Safe to delete** | Fully merged into main. |
+| `claude/m5-m6-m8-finish` | **Safe to delete** | Fully merged into main. |
+| `claude/release-pipeline` | **Safe to delete** | Fully merged into main (PR #5). |
+| `claude/fix-pnpm-version-mismatch` | **Safe to delete** | Fully merged into main (PR #6). |
+| `claude/implement-memoview-design-spv726` | **Safe to delete** | Fully merged into main (PR #9). |
+| `claude/fix-windows-vault-open` (PR #7) | **Rescued — safe to delete** | Good fix that never got merged. Cherry-picked into this branch (see below). |
+| `claude/m7-graph-view` (PR #8) | **Safe to delete — superseded** | Good idea, outdated implementation. See notes below. |
+
+PRs #7 and #8 have been closed (with the fix rescued into this branch). The
+session environment can only push to its own branch, so the branches themselves
+still need one manual sweep — from any local clone:
+
+```
+git push origin --delete claude/obsidian-clone-architecture-YD0Mi claude/m3-watcher \
+  claude/m4-graph claude/m5-m6-m8-finish claude/release-pipeline \
+  claude/fix-pnpm-version-mismatch claude/implement-memoview-design-spv726 \
+  claude/fix-windows-vault-open claude/m7-graph-view
+```
+
+(or GitHub → Branches page → trash icon per branch).
 
 ### The rescued fix: Windows crash on opening a vault (was PR #7)
 
